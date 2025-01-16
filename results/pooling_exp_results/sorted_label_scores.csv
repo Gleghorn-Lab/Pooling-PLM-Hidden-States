@@ -1,0 +1,46 @@
+Experiment,Total Rank Score
+mean + var,51.0
+mean + std,78.0
+mean + median,86.0
+median + var,93.0
+mean,98.0
+mean + min,99.0
+mean + cls,100.0
+median + std,104.0
+median + cls,104.0
+mean + max,116.0
+eos,117.0
+min + median,128.0
+median,132.0
+mean + eos,147.0
+max + median,148.0
+mean + norm,154.0
+median + eos,160.0
+min + cls,160.0
+var + cls,169.0
+norm + median,179.0
+max + cls,184.0
+std + cls,184.0
+min + std,192.0
+min + var,197.0
+max + var,204.0
+max + std,210.0
+min,212.0
+cls,215.0
+norm + cls,217.0
+min + norm,221.0
+var,221.0
+cls + eos,226.0
+max + min,230.0
+std,234.0
+min + eos,237.0
+max + norm,241.0
+std + eos,248.0
+var + eos,248.0
+max,255.0
+norm,255.0
+max + eos,258.0
+norm + std,265.0
+norm + var,272.0
+std + var,304.0
+norm + eos,318.0

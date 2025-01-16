@@ -106,7 +106,7 @@ def process_csv_files(input_folder, output_file):
     sorted_results.to_csv(output_file, index=False)
 
 # Specify input folder and output file
-input_folder = r'C:\Users\cnhor\Downloads\pooling_exp_results'
-output_file = r'C:\Users\cnhor\Downloads\pooling_exp_results\sorted_label_scores.csv'
+input_folder = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results'
+output_file = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results\sorted_label_scores.csv'
 
 process_csv_files(input_folder, output_file)
