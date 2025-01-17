@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 from typing import Tuple
+from itertools import combinations
 
 
 class Pooler:
@@ -109,28 +110,46 @@ if __name__ == '__main__':
     from sklearn.ensemble import RandomForestRegressor
     from sklearn.metrics import r2_score
 
-    data = load_dataset('GleghornLab/optimal_temperature')
-    all_seqs = data['train']['seqs'] + data['valid']['seqs'] + data['test']['seqs']
-    model = AutoModel.from_pretrained("Synthyra/ESMplusplus_small", trust_remote_code=True, torch_dtype=torch.float16).cuda()
-    emb_dict = model.embed_dataset(
-        sequences=all_seqs, # list of protein strings
-        batch_size=8, # embedding batch size
-        max_len=2048, # truncate to max_len
-        full_embeddings=True, # return residue-wise embeddings
-        full_precision=False, # store as float32
-        num_workers=0, # data loading num workers
-        sql=False, # return dictionary of sequences and embeddings
-    )
+    model = AutoModel.from_pretrained("Synthyra/ESMplusplus_small", trust_remote_code=True, torch_dtype=torch.float16)
+    def dataset_embed(dataset_name):
+        data = load_dataset(dataset_name)
+        all_seqs = data['train']['seqs'] + data['valid']['seqs'] + data['test']['seqs']
+        print(f"Number of sequences: {len(all_seqs)}")
+        emb_dict = model.embed_dataset(
+            sequences=all_seqs, # list of protein strings
+            batch_size=8, # embedding batch size
+            max_len=2048, # truncate to max_len
+            full_embeddings=True, # return residue-wise embeddings
+            full_precision=False, # store as float32
+            num_workers=0, # data loading num workers
+            sql=False, # return dictionary of sequences and embeddings
+            )
+        return data, all_seqs, emb_dict
 
+    pooling_options = ['mean', 'max', 'min', 'norm', 'median', 'std', 'var', 'cls', 'eos']
+    modifications = [None, 'sum', 'product']
+
+    # Generate experiments
+    pairwise_combinations = list(combinations(pooling_options, 2))  # Combinations of two pooling methods
+    product_methods = [(a, b) for a in pairwise_combinations for b in modifications if b == 'product']  # Combinations of pooling methods and modifications
+    sum_methods = [(a, b) for a in pairwise_combinations for b in modifications if b == 'sum']  # Combinations of pooling methods and sum
+    single_methods = [(option,) for option in pooling_options]  # Single pooling methods
+
+    # Combine both
+    experiments = product_methods + sum_methods
+
+    data, all_seqs, emb_dict = dataset_embed('GleghornLab/optimal_temperature')
     pooler = Pooler(data, emb_dict)
-    pooling_types = ['mean', 'max', 'norm', 'cls']
-    X_train, y_train, X_valid, y_valid, X_test, y_test = pooler.get_pooled_embeddings(pooling_types, modification='product')
-    # X (n_samples, n_features)
-    # y (n_samples)
+    for exp in experiments:
+        try:
+            X_train, y_train, X_valid, y_valid, X_test, y_test = pooler.get_pooled_embeddings(exp)
+            print(f"Successfully pooled with {exp}")
+        except ValueError as e:
+            print(e)
 
     print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
-    clf = RandomForestRegressor(n_jobs=-1)
+"""     clf = RandomForestRegressor(n_jobs=-1)
     clf.fit(X_train, y_train)
     y_pred = clf.predict(X_test)
-    print(r2_score(y_test, y_pred))
+    print(r2_score(y_test, y_pred)) """

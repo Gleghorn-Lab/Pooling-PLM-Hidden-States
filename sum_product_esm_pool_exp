@@ -1,6 +1,6 @@
 #pip install datasets lazypredict
 
-if __name__ == '__main__':   
+if __name__ == '__main__':
     import torch
     import numpy as np
     import pandas as pd
@@ -32,7 +32,7 @@ if __name__ == '__main__':
                 'std': self.std_pooling,
                 'var': self.var_pooling,
                 'cls': self.cls_pooling,
-                'eos': self.eos_pooling
+                'eos': self.eos_pooling,
             }
 
         def mean_pooling(self, emb): # (L, d) -> (d,)
@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
         def max_pooling(self, emb): # (L, d) -> (d,)
             return emb.max(dim=0).values
-        
+
         def min_pooling(self, emb): # (L, d) -> (d,)
             return emb.min(dim=0).values
 
@@ -53,10 +53,10 @@ if __name__ == '__main__':
 
         def median_pooling(self, emb): # (L, d) -> (d,)
             return emb.median(dim=0).values
-        
+
         def std_pooling(self, emb): # (L, d) -> (d,)
             return emb.std(dim=0)
-        
+
         def var_pooling(self, emb): # (L, d) -> (d,)
             return emb.var(dim=0)
 
@@ -96,7 +96,7 @@ if __name__ == '__main__':
             for pool_type in pooling_types:
                 if pool_type not in self.pooling_options:
                     raise ValueError(f"Invalid pooling type: {pool_type}")
-            
+
             train_embeddings, valid_embeddings, test_embeddings = [], [], []
             train_labels = np.array(self.train_labels)
             valid_labels = np.array(self.valid_labels)
@@ -112,18 +112,30 @@ if __name__ == '__main__':
             test_embeddings = torch.stack(test_embeddings).numpy().astype(np.float32)
 
             return train_embeddings, train_labels, valid_embeddings, valid_labels, test_embeddings, test_labels
-        
-    pooling_options = ['mean', 'max', 'min', 'norm', 'median', 'std', 'var', 'cls', 'eos']
-    modifications = [None, 'sum', 'product']
+
+    # Define pooling options and modifications
+    pooling_options = ['mean', 
+                       #'max', 
+                       #'min',
+                       #'norm', 
+                       #'median',
+                       'std',
+                       #'var', 
+                       'cls', 
+                       #'eos'
+                       ]
+    modifications = ['None', 'sum', 'product']
 
     # Generate experiments
-    pairwise_combinations = list(combinations(pooling_options, 2))  # Combinations of two pooling methods
-    product_methods = [(a, b) for a in pairwise_combinations for b in modifications if b == 'product']  # Combinations of pooling methods and modifications
-    sum_methods = [(a, b) for a in pairwise_combinations for b in modifications if b == 'sum']  # Combinations of pooling methods and sum
-    single_methods = [(option,) for option in pooling_options]  # Single pooling methods
+    pairwise_combinations = list(combinations(pooling_options, 2))  # Add 'None' to pairwise combinations
+    comb_methods = [(a, b) for a in pairwise_combinations for b in modifications if b == 'None']  # 'None' methods
+    product_methods = [(a, b) for a in pairwise_combinations for b in modifications if b == 'product']  # 'product' methods
+    sum_methods = [(a, b) for a in pairwise_combinations for b in modifications if b == 'sum']  # 'sum' methods
+    single_methods = [((option,), 'None') for option in pooling_options]
 
-    # Combine both
-    experiments = pairwise_combinations + product_methods + sum_methods + single_methods
+
+    # Combine all into experiments
+    experiments = comb_methods + product_methods + sum_methods + single_methods
 
     def pearson_metric(y_true, y_pred):
         return pearsonr(y_true, y_pred).correlation
@@ -145,27 +157,30 @@ if __name__ == '__main__':
         all_seqs = data['train']['seqs'] + data['valid']['seqs'] + data['test']['seqs']
         print(f"Number of sequences: {len(all_seqs)}")
         emb_dict = model.embed_dataset(
-        sequences=all_seqs, # list of protein strings
-        batch_size=8, # embedding batch size
-        max_len=20000, # truncate to max_len
-        full_embeddings=True, # return residue-wise embeddings
-        full_precision=False, # store as float32
-        num_workers=0, # data loading num workers
-        sql=False, # return dictionary of sequences and embeddings
-        )
+          sequences=all_seqs, # list of protein strings
+          batch_size=8, # embedding batch size
+          max_len=20000, # truncate to max_len
+          full_embeddings=True, # return residue-wise embeddings
+          full_precision=False, # store as float32
+          num_workers=0, # data loading num workers
+          sql=False, # return dictionary of sequences and embeddings
+          )
         return data, all_seqs, emb_dict
 
-    datasets_regression = ['GleghornLab/optimal_temperature',
-                           'GleghornLab/optimal_ph',
-                           'GleghornLab/TS_reg',
-                           'GleghornLab/fitness_prediction', 
-                           'GleghornLab/enzyme_kcat']
-    datasets_classification = ['GleghornLab/MB_reg', 
-                               'GleghornLab/DL2_reg', 
-                               'GleghornLab/DL10_reg', 
-                               'GleghornLab/cloning_clf']
+    datasets_regression = [#'GleghornLab/optimal_temperature',
+                           #'GleghornLab/optimal_ph',
+                           #'GleghornLab/TS_reg',
+                           #'GleghornLab/fitness_prediction',
+                           #'GleghornLab/enzyme_kcat'
+                           ]
+    datasets_classification = ['GleghornLab/MB_reg',
+                               #'GleghornLab/DL2_reg',
+                               #'GleghornLab/DL10_reg',
+                               #'GleghornLab/cloning_clf'
+                               ]
 
-    model = AutoModel.from_pretrained("Synthyra/ESMplusplus_small", trust_remote_code=True, torch_dtype=torch.float16).cuda()
+    model = AutoModel.from_pretrained("Synthyra/FastESM2_650", trust_remote_code=True, torch_dtype=torch.float16).cuda()
+
 
     def regression_results(datasets_regression):
         for dataset_name in datasets_regression:
@@ -173,31 +188,34 @@ if __name__ == '__main__':
             pooler = Pooler(data, emb_dict)
             results = {}
             print(f"Dataset: {dataset_name}")
-            for exp in experiments:
+            for exp, modification in experiments:
+                experiment = exp, modification
                 try:
-                    X_train, y_train, X_valid, y_valid, X_test, y_test = pooler.get_pooled_embeddings(exp)
+                    X_train, y_train, X_valid, y_valid, X_test, y_test = pooler.get_pooled_embeddings(exp, modification)
                     print(f"Successfully pooled with {exp}")
                 except ValueError as e:
                     print(e)
-                test_model = RandomForestRegressor(bootstrap=False, 
-                                                   criterion='poisson', 
+                test_model = RandomForestRegressor(bootstrap=False,
+                                                   criterion='poisson',
                                                    max_depth=20,
-                                                   max_features='sqrt', 
+                                                   max_features='sqrt',
                                                    min_samples_leaf=4,
-                                                   min_samples_split=10, 
+                                                   min_samples_split=10,
+                                                   random_state = 42,
                                                    n_jobs=-1)
                 test_model.fit(X_train, y_train)
                 score_pearson = pearson_scorer(test_model, X_test, y_test)
                 score_r2 = r2_scorer(test_model, X_test, y_test)
                 score_avg = (score_pearson + score_r2) / 2
                 print(f"Experiment: {exp}")
+                print(f"Modification: {modification}")
                 print(f"Pearson Score Tested: {score_pearson}")
                 print(f"R2 Score Tested: {score_r2}")
                 print(f"Average Score: {score_avg}")
-                results[exp] = {'pearson': score_pearson, 'r2': score_r2, 'score_average': score_avg}
+                results[experiment] = {'pearson': score_pearson, 'r2': score_r2, 'score_average': score_avg}
             df = pd.DataFrame.from_dict(results)
             df.sort_values(by='score_average', axis=1, ascending=False, inplace=True)
-            df.to_csv(f'results_{dataset_name[12:]}.csv')
+            df.to_csv(f'results_{dataset_name[12:]}_regr.csv')
 
     def classification_results(datasets_classification):
         for dataset_name in datasets_classification:
@@ -205,27 +223,29 @@ if __name__ == '__main__':
             pooler = Pooler(data, emb_dict)
             results = {}
             print(f"Dataset: {dataset_name}")
-            for exp in experiments:
+            for exp, modification in experiments:
+                experiment = exp, modification
                 try:
-                    X_train, y_train, X_valid, y_valid, X_test, y_test = pooler.get_pooled_embeddings(exp)
+                    X_train, y_train, X_valid, y_valid, X_test, y_test = pooler.get_pooled_embeddings(exp, modification)
                     print(f"Successfully pooled with {exp}")
                 except ValueError as e:
                     print(e)
-                test_model = RandomForestClassifier(bootstrap=False, 
-                                                    class_weight='balanced', 
+                test_model = RandomForestClassifier(bootstrap=False,
+                                                    class_weight='balanced',
                                                     max_depth=30,
-                                                    min_samples_split=5, 
-                                                    n_estimators=200, 
+                                                    min_samples_split=5,
+                                                    n_estimators=200,
+                                                    random_state = 42,
                                                     n_jobs=-1)
                 test_model.fit(X_train, y_train)
                 score_mcc = mcc_scorer(test_model, X_test, y_test)
                 print(f"Experiment: {exp}")
+                print(f"Modification: {modification}")
                 print(f"MCC Score Tested: {score_mcc}")
-                results[exp] = {'mcc': score_mcc}
+                results[experiment] = {'mcc': score_mcc}
             df = pd.DataFrame.from_dict(results)
-            df.dropna()
             df.sort_values(by='mcc', axis=1, ascending=False, inplace=True)
-            df.to_csv(f'results_{dataset_name[12:]}.csv')
+            df.to_csv(f'results_{dataset_name[12:]}_class.csv')
 
     regression_results(datasets_regression)
     classification_results(datasets_classification)
