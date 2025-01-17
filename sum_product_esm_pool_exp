@@ -115,14 +115,14 @@ if __name__ == '__main__':
 
     # Define pooling options and modifications
     pooling_options = ['mean', 
-                       #'max', 
-                       #'min',
-                       #'norm', 
-                       #'median',
+                       'max', 
+                       'min',
+                       'norm', 
+                       'median',
                        'std',
-                       #'var', 
+                       'var', 
                        'cls', 
-                       #'eos'
+                       'eos'
                        ]
     modifications = ['None', 'sum', 'product']
 
@@ -167,16 +167,17 @@ if __name__ == '__main__':
           )
         return data, all_seqs, emb_dict
 
-    datasets_regression = [#'GleghornLab/optimal_temperature',
-                           #'GleghornLab/optimal_ph',
-                           #'GleghornLab/TS_reg',
-                           #'GleghornLab/fitness_prediction',
-                           #'GleghornLab/enzyme_kcat'
+    datasets_regression = ['GleghornLab/optimal_temperature',
+                           'GleghornLab/optimal_ph',
+                           'GleghornLab/TS_reg',
+                           'GleghornLab/fitness_prediction',
+                           'GleghornLab/enzyme_kcat'
                            ]
+    
     datasets_classification = ['GleghornLab/MB_reg',
-                               #'GleghornLab/DL2_reg',
-                               #'GleghornLab/DL10_reg',
-                               #'GleghornLab/cloning_clf'
+                               'GleghornLab/DL2_reg',
+                               'GleghornLab/DL10_reg',
+                               'GleghornLab/cloning_clf'
                                ]
 
     model = AutoModel.from_pretrained("Synthyra/FastESM2_650", trust_remote_code=True, torch_dtype=torch.float16).cuda()
