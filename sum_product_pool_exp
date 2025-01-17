@@ -27,7 +27,6 @@ if __name__ == '__main__':
                 'max': self.max_pooling,
                 'min': self.min_pooling,
                 'norm': self.norm_pooling,
-                'prod': self.prod_pooling,
                 'median': self.median_pooling,
                 'std': self.std_pooling,
                 'var': self.var_pooling,
@@ -46,10 +45,6 @@ if __name__ == '__main__':
 
         def norm_pooling(self, emb): # (L, d) -> (d,)
             return emb.norm(dim=0, p=2)
-
-        def prod_pooling(self, emb): # (L, d) -> (d,)
-            length = emb.shape[0]
-            return emb.prod(dim=0) / length
 
         def median_pooling(self, emb): # (L, d) -> (d,)
             return emb.median(dim=0).values
