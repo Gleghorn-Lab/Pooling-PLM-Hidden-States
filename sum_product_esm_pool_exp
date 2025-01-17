@@ -1,4 +1,4 @@
-#pip install datasets lazypredict
+#pip install datasets
 
 if __name__ == '__main__':
     import torch

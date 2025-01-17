@@ -19,10 +19,14 @@ def process_csv_files(input_folder, output_file):
 
             # Combine the first two rows to create experiment names
             experiment_names = [
-                f"{col1} + {col2}" if pd.notna(col2) else f"{col1}"
+                f"{col1}_{col2}" if pd.notna(col2) else f"{col1}"
                 for col1, col2 in zip(df.iloc[0], df.iloc[1])
             ]
-
+            # Remove '(', ')', and '_None' from experiment names
+            experiment_names = [
+                name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
+                for name in experiment_names
+            ]
             # Locate the 'score_average' row
             avg_score_row_index = df[df.iloc[:, 0].str.contains('score_average', na=False)].index
             if len(avg_score_row_index) == 0:
@@ -61,8 +65,13 @@ def process_csv_files(input_folder, output_file):
 
             # Combine the first two rows to create experiment names
             experiment_names = [
-                f"{col1} + {col2}" if pd.notna(col2) else f"{col1}"
+                f"{col1}_{col2}" if pd.notna(col2) else f"{col1}"
                 for col1, col2 in zip(df.iloc[0], df.iloc[1])
+            ]
+            # Remove '(', ')', and '_None' from experiment names
+            experiment_names = [
+                name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
+                for name in experiment_names
             ]
 
             # Locate the 'score_average' row
@@ -106,7 +115,7 @@ def process_csv_files(input_folder, output_file):
     sorted_results.to_csv(output_file, index=False)
 
 # Specify input folder and output file
-input_folder = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results_esm_plus_plus_small'
-output_file = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results_esm_plus_plus_small\sorted_label_scores.csv'
+input_folder = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results_fastesm650'
+output_file = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results_fastesm650\FastESM650_Total_Rank_Scores.csv'
 
 process_csv_files(input_folder, output_file)
