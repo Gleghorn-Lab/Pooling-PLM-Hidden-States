@@ -180,7 +180,8 @@ if __name__ == '__main__':
                                'GleghornLab/cloning_clf'
                                ]
 
-    model = AutoModel.from_pretrained("Synthyra/FastESM2_650", trust_remote_code=True, torch_dtype=torch.float16).cuda()
+    model_name = "Synthyra/FastESM2_650"
+    model = AutoModel.from_pretrained(model_name, trust_remote_code=True, torch_dtype=torch.float16).cuda()
 
 
     def regression_results(datasets_regression):
@@ -216,7 +217,7 @@ if __name__ == '__main__':
                 results[experiment] = {'pearson': score_pearson, 'r2': score_r2, 'score_average': score_avg}
             df = pd.DataFrame.from_dict(results)
             df.sort_values(by='score_average', axis=1, ascending=False, inplace=True)
-            df.to_csv(f'results_{dataset_name[12:]}_regr.csv')
+            df.to_csv(f'{model_name[9:]}_results_{dataset_name[12:]}_regr.csv')
 
     def classification_results(datasets_classification):
         for dataset_name in datasets_classification:
@@ -246,7 +247,7 @@ if __name__ == '__main__':
                 results[experiment] = {'mcc': score_mcc}
             df = pd.DataFrame.from_dict(results)
             df.sort_values(by='mcc', axis=1, ascending=False, inplace=True)
-            df.to_csv(f'results_{dataset_name[12:]}_class.csv')
+            df.to_csv(f'{model_name[9:]}_results_{dataset_name[12:]}_class.csv')
 
     regression_results(datasets_regression)
     classification_results(datasets_classification)
