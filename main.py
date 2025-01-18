@@ -4,6 +4,8 @@ import torch
 from transformers import AutoModel
 from datasets import load_dataset
 
+
+
 data = load_dataset('GleghornLab/optimal_temperature')
 all_seqs = data['train']['seqs'] + data['valid']['seqs'] + data['test']['seqs']
 len(all_seqs)
