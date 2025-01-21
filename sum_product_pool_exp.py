@@ -146,12 +146,13 @@ mcc_scorer = make_scorer(mcc_metric, greater_is_better=True)
 
 def dataset_embed(model, dataset_name):
     data = load_dataset(dataset_name)
+    data = data.map(lambda x: {'seqs': x['seqs'][:2048]})
     all_seqs = list(set(data['train']['seqs'] + data['valid']['seqs'] + data['test']['seqs']))
     print(f"Number of sequences: {len(all_seqs)}")
     emb_dict = model.embed_dataset(
         sequences=all_seqs, # list of protein strings
         batch_size=8, # embedding batch size
-        max_len=8192, # truncate to max_len
+        max_len=2048, # truncate to max_len
         full_embeddings=True, # return residue-wise embeddings
         full_precision=False, # store as float32
         num_workers=0, # data loading num workers
@@ -198,7 +199,7 @@ def regression_results(datasets_regression, model, model_name):
                 warm_start=False,
                 ccp_alpha=0.0,
                 bootstrap=False,
-                n_jobs=-1
+                n_jobs=N_JOBS
             )
             test_model.fit(X_train, y_train)
             score_pearson = pearson_scorer(test_model, X_test, y_test)
@@ -242,7 +243,7 @@ def classification_results(datasets_classification, model, model_name):
                 oob_score=False,
                 warm_start=False,
                 random_state = 42,
-                n_jobs=-1
+                n_jobs=N_JOBS
             )
             test_model.fit(X_train, y_train)
             score_mcc = mcc_scorer(test_model, X_test, y_test)
@@ -269,4 +270,9 @@ def test_multiple_models(models):
 
 if __name__ == '__main__':
     # Define pooling options, modifications, datasets, and models to use
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--n_jobs', type=int, default=-1, help='Number of jobs to run in parallel')
+    args = parser.parse_args()
+    N_JOBS = args.n_jobs
     test_multiple_models(models)
