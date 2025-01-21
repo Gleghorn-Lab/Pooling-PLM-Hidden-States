@@ -4,10 +4,8 @@ import pandas as pd
 from transformers import AutoModel
 from datasets import load_dataset
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
-from sklearn.metrics import r2_score
 from itertools import combinations
 from typing import Tuple
-from itertools import combinations
 from scipy.stats import pearsonr
 from sklearn.metrics import r2_score, make_scorer
 from sklearn.metrics import matthews_corrcoef
