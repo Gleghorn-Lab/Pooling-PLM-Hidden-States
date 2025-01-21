@@ -187,7 +187,6 @@ def regression_results(datasets_regression, model, model_name):
             except ValueError as e:
                 print(e)
             test_model = RandomForestRegressor(
-                criterion='poisson',
                 max_depth=100,
                 max_features='sqrt',
                 min_samples_leaf=4,
@@ -258,8 +257,8 @@ def test_multiple_models(models):
     for model_name in models:
         print(f'Testing all possible combinations for all datasets in: {model_name}')
         model = AutoModel.from_pretrained(model_name, trust_remote_code=True, torch_dtype=torch.float16).cuda()
-        regression_results(datasets_regression, model, model_name)
         classification_results(datasets_classification, model, model_name)
+        regression_results(datasets_regression[-1], model, model_name)
         print(f'Completed and downloaded results for: {model_name}')
         model.cpu()
         del model
