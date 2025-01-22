@@ -115,7 +115,7 @@ def process_csv_files(input_folder, output_file):
     sorted_results.to_csv(output_file, index=False)
 
 # Specify input folder and output file
-input_folder = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results_fastesm650'
-output_file = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results_fastesm650\FastESM650_Total_Rank_Scores.csv'
+input_folder = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\sum_product'
+output_file = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\sum_product\ESM2-650M_Total_Rank_Scores.csv'
 
 process_csv_files(input_folder, output_file)
