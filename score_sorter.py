@@ -3,6 +3,10 @@ import pandas as pd
 
 def process_csv_files(input_folder, output_file):
     experiment_ranks = {}
+    experiment_r2_scores = {}
+    experiment_mcc_scores = {}
+    experiment_r2_counts = {}
+    experiment_mcc_counts = {}
 
     # Iterate over all CSV files in the input folder
     for filename in os.listdir(input_folder):
@@ -22,7 +26,7 @@ def process_csv_files(input_folder, output_file):
                 f"{col1}_{col2}" if pd.notna(col2) else f"{col1}"
                 for col1, col2 in zip(df.iloc[0], df.iloc[1])
             ]
-            # Remove '(', ')', and '_None' from experiment names
+            # Clean up experiment names
             experiment_names = [
                 name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
                 for name in experiment_names
@@ -33,16 +37,21 @@ def process_csv_files(input_folder, output_file):
             # Rank the scores
             ranks = pd.Series(scores).rank(ascending=False, method='min').tolist()
 
-            # Update cumulative ranks
-            for experiment, rank in zip(experiment_names, ranks):
+            # Update cumulative ranks, R2-Pearson scores, and counts
+            for experiment, rank, score in zip(experiment_names, ranks, scores):
+                try:
+                    score = float(score)
+                except (ValueError, TypeError):
+                    continue  # Skip invalid scores
+
                 if experiment not in experiment_ranks:
                     experiment_ranks[experiment] = 0
+                    experiment_r2_scores[experiment] = 0.0
+                    experiment_r2_counts[experiment] = 0
                 experiment_ranks[experiment] += rank
+                experiment_r2_scores[experiment] += score
+                experiment_r2_counts[experiment] += 1
 
-            final_ranks_df = pd.DataFrame(list(experiment_ranks.items()), columns=['Experiment', 'Cumulative Rank'])
-            final_ranks_df = final_ranks_df.sort_values(by='Cumulative Rank')
-
-                
         if filename.endswith('class.csv'):
             file_path = os.path.join(input_folder, filename)
 
@@ -59,7 +68,7 @@ def process_csv_files(input_folder, output_file):
                 f"{row1}_{row2}" if pd.notna(row2) else f"{row1}"
                 for row1, row2 in zip(df.iloc[0], df.iloc[1])
             ]
-            # Remove '(', ')', and '_None' from experiment names
+            # Clean up experiment names
             experiment_names = [
                 name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
                 for name in experiment_names
@@ -70,24 +79,41 @@ def process_csv_files(input_folder, output_file):
             # Rank the scores
             ranks = pd.Series(scores).rank(ascending=False, method='min').tolist()
 
-            # Update cumulative ranks
-            for experiment, rank in zip(experiment_names, ranks):
+            # Update cumulative ranks, MCC scores, and counts
+            for experiment, rank, score in zip(experiment_names, ranks, scores):
+                try:
+                    score = float(score)
+                except (ValueError, TypeError):
+                    continue  # Skip invalid scores
+
                 if experiment not in experiment_ranks:
                     experiment_ranks[experiment] = 0
+                    experiment_mcc_scores[experiment] = 0.0
+                    experiment_mcc_counts[experiment] = 0
                 experiment_ranks[experiment] += rank
+                experiment_mcc_scores[experiment] += score
+                experiment_mcc_counts[experiment] += 1
 
-            final_ranks_df = pd.DataFrame(list(experiment_ranks.items()), columns=['Experiment', 'Cumulative Rank'])
-            final_ranks_df = final_ranks_df.sort_values(by='Cumulative Rank')
+    # Calculate averages
+    experiment_r2_averages = {
+        experiment: experiment_r2_scores[experiment] / experiment_r2_counts[experiment]
+        for experiment in experiment_r2_scores if experiment_r2_counts[experiment] > 0
+    }
+    experiment_mcc_averages = {
+        experiment: experiment_mcc_scores[experiment] / experiment_mcc_counts[experiment]
+        for experiment in experiment_mcc_scores if experiment_mcc_counts[experiment] > 0
+    }
 
-    # Convert the results to a DataFrame
-    sorted_results = pd.DataFrame(
-        list(experiment_ranks.items()), columns=['Experiment', 'Total Rank Score']
-    )
+    # Combine results into a DataFrame
+    sorted_results = pd.DataFrame({
+        'Experiment': experiment_ranks.keys(),
+        'Total Rank Score': experiment_ranks.values(),
+        'Average R2-Pearson Score': [experiment_r2_averages.get(exp, None) for exp in experiment_ranks.keys()],
+        'Average MCC Score': [experiment_mcc_averages.get(exp, None) for exp in experiment_ranks.keys()],
+    })
 
-    # Sort by the lowest total rank score (higher rank)
+    # Sort by the lowest total rank score
     sorted_results = sorted_results.sort_values(by='Total Rank Score')
-
-    sorted_results = sorted_results[~sorted_results.isin(['nan']).any(axis=1)]
 
     # Save the sorted results to the output file
     sorted_results.to_csv(output_file, index=False)
