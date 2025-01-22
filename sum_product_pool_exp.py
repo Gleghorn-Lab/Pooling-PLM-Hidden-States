@@ -17,15 +17,16 @@ modifications = ['None', 'sum', 'product']
 
 datasets_regression = ['GleghornLab/optimal_temperature',
                         'GleghornLab/optimal_ph',
-                        'GleghornLab/TS_reg',
                         'GleghornLab/fitness_prediction',
-                        'GleghornLab/enzyme_kcat'
+                        'GleghornLab/enzyme_kcat',
+                        'GleghornLab/stability_prediction'
                         ]
 
 datasets_classification = ['GleghornLab/MB_reg',
                             'GleghornLab/DL2_reg',
                             'GleghornLab/DL10_reg',
-                            'GleghornLab/cloning_clf'
+                            'GleghornLab/cloning_clf',
+                            'GleghornLab/material_production'
                             ]
 
 models = ["Synthyra/ESM2-650M", "Synthyra/ESMplusplus_small"]
