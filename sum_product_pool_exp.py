@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import pandas as pd
+import sqlite3
 from transformers import AutoModel
 from datasets import load_dataset
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
@@ -142,21 +143,34 @@ mcc_metric.__name__ = "mcc_metric"
 mcc_scorer = make_scorer(mcc_metric, greater_is_better=True)
 
 
-def dataset_embed(model, dataset_name):
+def dataset_embed(model, model_name, hidden_size, dataset_name):
     data = load_dataset(dataset_name)
     data = data.map(lambda x: {'seqs': x['seqs'][:2048]})
     all_seqs = list(set(data['train']['seqs'] + data['valid']['seqs'] + data['test']['seqs']))
     print(f"Number of sequences: {len(all_seqs)}")
-    emb_dict = model.embed_dataset(
+    
+    _ = model.embed_dataset(
         sequences=all_seqs, # list of protein strings
         batch_size=8, # embedding batch size
         max_len=2048, # truncate to max_len
         full_embeddings=True, # return residue-wise embeddings
         full_precision=False, # store as float32
         num_workers=0, # data loading num workers
-        sql=False, # return dictionary of sequences and embeddings
+        sql=True, # return dictionary of sequences and embeddings
+        sql_db_path=f'{model_name}.db'
         )
-    return data, all_seqs, emb_dict
+    
+    emb_dict = {}
+    for seq in all_seqs:
+        conn = sqlite3.connect(f'{model_name}.db')
+        c = conn.cursor()
+        c.execute('SELECT embedding FROM embeddings WHERE sequence = ?', (seq,))
+        emb = c.fetchone()[0]
+        emb_dict[seq] = torch.from_numpy(np.frombuffer(emb, dtype=np.float32)).reshape(-1, hidden_size)
+
+    # Clear CUDA cache after embedding
+    torch.cuda.empty_cache()
+    return data, emb_dict
 
 
 # Generate experiments
@@ -173,8 +187,9 @@ def create_experiments(pooling_options, modifications):
 
 
 def regression_results(datasets_regression, model, model_name):
+    hidden_size = model.config.hidden_size
     for dataset_name in datasets_regression:
-        data, all_seqs, emb_dict = dataset_embed(model, dataset_name)
+        data, emb_dict = dataset_embed(model, model_name.split('/')[-1], hidden_size, dataset_name)
         experiments = create_experiments(pooling_options, modifications)
         pooler = Pooler(data, emb_dict)
         results = {}
@@ -211,11 +226,13 @@ def regression_results(datasets_regression, model, model_name):
         df = pd.DataFrame.from_dict(results)
         df.sort_values(by='score_average', axis=1, ascending=False, inplace=True)
         df.to_csv(f'{model_name[9:]}_results_{dataset_name[12:]}_regr.csv')
+        del emb_dict
 
 
 def classification_results(datasets_classification, model, model_name):
+    hidden_size = model.config.hidden_size
     for dataset_name in datasets_classification:
-        data, all_seqs, emb_dict = dataset_embed(model, dataset_name)
+        data, emb_dict = dataset_embed(model, model_name.split('/')[-1], hidden_size, dataset_name)
         experiments = create_experiments(pooling_options, modifications)
         pooler = Pooler(data, emb_dict)
         results = {}
@@ -251,18 +268,23 @@ def classification_results(datasets_classification, model, model_name):
         df = pd.DataFrame.from_dict(results)
         df.sort_values(by='mcc', axis=1, ascending=False, inplace=True)
         df.to_csv(f'{model_name[9:]}_results_{dataset_name[12:]}_class.csv')
+        del emb_dict
 
 
 def test_multiple_models(models):
     for model_name in models:
         print(f'Testing all possible combinations for all datasets in: {model_name}')
         model = AutoModel.from_pretrained(model_name, trust_remote_code=True, torch_dtype=torch.float16).cuda()
-        classification_results(datasets_classification, model, model_name)
-        regression_results(datasets_regression[-1], model, model_name)
-        print(f'Completed and downloaded results for: {model_name}')
-        model.cpu()
-        del model
-        torch.cuda.empty_cache()
+        
+        try:
+            classification_results(datasets_classification, model, model_name)
+            regression_results(datasets_regression, model, model_name)
+            print(f'Completed and downloaded results for: {model_name}')
+        finally:
+            # Ensure cleanup happens even if there's an error
+            model.cpu()
+            del model
+            torch.cuda.empty_cache()
 
 
 if __name__ == '__main__':
