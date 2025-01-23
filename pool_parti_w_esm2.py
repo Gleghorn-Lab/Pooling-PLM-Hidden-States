@@ -18,7 +18,7 @@ class PoolPartiESM2:
         G = nx.from_numpy_array(att.numpy(), create_using=nx.DiGraph)
 
         if G.number_of_nodes() != att.shape[0]:
-            raise Exception(f"The number of nodes in the graph should be equal to the number of tokens in sequence! You have {G.number_of_nodes()} nodes for {attention_matrix.shape[0]} tokens.") 
+            raise Exception(f"The number of nodes in the graph should be equal to the number of tokens in sequence! You have {G.number_of_nodes()} nodes for {att.shape[0]} tokens.") 
         if G.number_of_edges() == 0:
             raise Exception(f"You don't seem to have any attention edges left in the graph.")
         
@@ -31,7 +31,7 @@ class PoolPartiESM2:
         for r, a, mask in zip(rep, attn, attention_mask):
             scores = self._get_importance_scores(a)
             scores = torch.tensor(np.array(list(scores.values())))
-            pooled_rep = torch.sum(r * scores.unsqueeze(-1) / mask.sum(), dim=0)
+            pooled_rep = torch.sum(r * scores.unsqueeze(-1), dim=0) / mask.sum()
             pooled_reps.append(pooled_rep)
         return torch.stack(pooled_reps)
     
@@ -45,16 +45,14 @@ class PoolPartiESM2:
                 bs, seq_len = input_ids.shape
                 attention_mask = seqs.attention_mask.to(self.device) # (b, L)
                 out = self.model(input_ids, attention_mask=attention_mask, output_attentions=True)
-                attention_mask = attention_mask.cpu()
-                rep = out.last_hidden_state.float().cpu() # (b, L, d)
-                att_mask = attention_mask[:, :, None].expand(bs, seq_len, 1)
-                rep = rep * att_mask
-                att = torch.cat(out.attentions).float().cpu() # (b, n_layers, n_heads, L, L)
+                rep = out.last_hidden_state.float() # (b, L, d)
+                rep = rep * attention_mask.unsqueeze(-1)
+                att = torch.cat(out.attentions).float() # (b, n_layers, n_heads, L, L)
                 att_mask = attention_mask[:, None, None, None, :].expand(bs, 1, 1, seq_len, seq_len)
                 att = att * att_mask
-                att = att.max(dim=1).values # (b, n_layers, L, L)
-                att = att.max(dim=0).values # (b, L, L)
-                pooled_rep = self._pool(rep, att, attention_mask)
+                att = att.max(dim=2).values # (b, n_layers, L, L)
+                att = att.max(dim=1).values # (b, L, L)
+                pooled_rep = self._pool(rep.cpu(), att.cpu(), attention_mask.cpu())
                 embedding_dict[seqs] = pooled_rep
         return embedding_dict
 
