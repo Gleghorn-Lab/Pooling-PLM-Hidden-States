@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 
+
 def process_csv_files(input_folder, output_file):
     experiment_ranks = {}
     experiment_r2_scores = {}
@@ -9,6 +10,7 @@ def process_csv_files(input_folder, output_file):
     experiment_mcc_counts = {}
 
     # Iterate over all CSV files in the input folder
+    print(os.listdir(input_folder))
     for filename in os.listdir(input_folder):
         if filename.endswith('regr.csv'):
             file_path = os.path.join(input_folder, filename)
@@ -97,11 +99,11 @@ def process_csv_files(input_folder, output_file):
     # Calculate averages
     experiment_r2_averages = {
         experiment: experiment_r2_scores[experiment] / experiment_r2_counts[experiment]
-        for experiment in experiment_r2_scores if experiment_r2_counts[experiment] > 0
+        for experiment in experiment_r2_scores
     }
     experiment_mcc_averages = {
         experiment: experiment_mcc_scores[experiment] / experiment_mcc_counts[experiment]
-        for experiment in experiment_mcc_scores if experiment_mcc_counts[experiment] > 0
+        for experiment in experiment_mcc_scores
     }
 
     # Combine results into a DataFrame
@@ -118,8 +120,13 @@ def process_csv_files(input_folder, output_file):
     # Save the sorted results to the output file
     sorted_results.to_csv(output_file, index=False)
 
-# Specify input folder and output file
-input_folder = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\sum_product'
-output_file = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\sum_product\ESM2-650M_Total_Rank_Scores.csv'
 
-process_csv_files(input_folder, output_file)
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--input_folder', default='results', type=str)
+    parser.add_argument('--output_file', default='results', type=str)
+    args = parser.parse_args()
+
+    process_csv_files(args.input_folder, args.output_file)

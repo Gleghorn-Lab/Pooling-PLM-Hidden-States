@@ -64,4 +64,3 @@ if __name__ == "__main__":
     pool_parti = PoolPartiESM2(seqs)
     embedding_dict = pool_parti.embed_seqs()
     print(len(embedding_dict))
-
