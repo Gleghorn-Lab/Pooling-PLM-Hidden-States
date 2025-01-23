@@ -2,7 +2,11 @@ import os
 import pandas as pd
 
 def process_csv_files(input_folder, output_file):
-    label_scores = {}
+    experiment_ranks = {}
+    experiment_r2_scores = {}
+    experiment_mcc_scores = {}
+    experiment_r2_counts = {}
+    experiment_mcc_counts = {}
 
     # Iterate over all CSV files in the input folder
     for filename in os.listdir(input_folder):
@@ -22,36 +26,32 @@ def process_csv_files(input_folder, output_file):
                 f"{col1}_{col2}" if pd.notna(col2) else f"{col1}"
                 for col1, col2 in zip(df.iloc[0], df.iloc[1])
             ]
-            # Remove '(', ')', and '_None' from experiment names
+            # Clean up experiment names
             experiment_names = [
                 name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
                 for name in experiment_names
             ]
-            # Locate the 'score_average' row
-            avg_score_row_index = df[df.iloc[:, 0].str.contains('score_average', na=False)].index
-            if len(avg_score_row_index) == 0:
-                print(f"Skipping {filename}: No 'score_average' row found.")
-                continue
 
-            avg_score_row = df.iloc[avg_score_row_index[0], 1:]  # Exclude the first column
+            scores = df.iloc[4].tolist()  # Fifth row (scores)
 
-            # Convert scores to a numeric format and rank them
-            scores = []
-            for score in avg_score_row:
+            # Rank the scores
+            ranks = pd.Series(scores).rank(ascending=False, method='min').tolist()
+
+            # Update cumulative ranks, R2-Pearson scores, and counts
+            for experiment, rank, score in zip(experiment_names, ranks, scores):
                 try:
-                    scores.append(float(score) if score != 'nan' else None)
-                except ValueError:
-                    scores.append(None)
+                    score = float(score)
+                except (ValueError, TypeError):
+                    continue  # Skip invalid scores
 
-            ranks = pd.Series(scores).rank(ascending=False, method='min', na_option='bottom').tolist()
+                if experiment not in experiment_ranks:
+                    experiment_ranks[experiment] = 0
+                    experiment_r2_scores[experiment] = 0.0
+                    experiment_r2_counts[experiment] = 0
+                experiment_ranks[experiment] += rank
+                experiment_r2_scores[experiment] += score
+                experiment_r2_counts[experiment] += 1
 
-            # Map ranks to experiment names
-            for experiment, rank in zip(experiment_names, ranks):
-                if rank is not None:  # Skip None values
-                    if experiment not in label_scores:
-                        label_scores[experiment] = 0
-                    label_scores[experiment] += rank
-                
         if filename.endswith('class.csv'):
             file_path = os.path.join(input_folder, filename)
 
@@ -65,57 +65,61 @@ def process_csv_files(input_folder, output_file):
 
             # Combine the first two rows to create experiment names
             experiment_names = [
-                f"{col1}_{col2}" if pd.notna(col2) else f"{col1}"
-                for col1, col2 in zip(df.iloc[0], df.iloc[1])
+                f"{row1}_{row2}" if pd.notna(row2) else f"{row1}"
+                for row1, row2 in zip(df.iloc[0], df.iloc[1])
             ]
-            # Remove '(', ')', and '_None' from experiment names
+            # Clean up experiment names
             experiment_names = [
                 name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
                 for name in experiment_names
             ]
 
-            # Locate the 'score_average' row
-            mcc_score_row_index = df[df.iloc[:, 0].str.contains('mcc', na=False)].index
-            if len(mcc_score_row_index) == 0:
-                print(f"Skipping {filename}: No 'mcc_average' row found.")
-                continue
+            scores = df.iloc[2].tolist()  # Second row (scores)
 
-            mcc_score_row = df.iloc[mcc_score_row_index[0], 1:]  # Exclude the first column
+            # Rank the scores
+            ranks = pd.Series(scores).rank(ascending=False, method='min').tolist()
 
-            # Convert scores to a numeric format and rank them
-            scores = []
-            for score in mcc_score_row:
+            # Update cumulative ranks, MCC scores, and counts
+            for experiment, rank, score in zip(experiment_names, ranks, scores):
                 try:
-                    scores.append(float(score) if score != 'nan' else None)
-                except ValueError:
-                    scores.append(None)
+                    score = float(score)
+                except (ValueError, TypeError):
+                    continue  # Skip invalid scores
 
-            ranks = pd.Series(scores).rank(ascending=False, method='min', na_option='bottom').tolist()
+                if experiment not in experiment_ranks:
+                    experiment_ranks[experiment] = 0
+                    experiment_mcc_scores[experiment] = 0.0
+                    experiment_mcc_counts[experiment] = 0
+                experiment_ranks[experiment] += rank
+                experiment_mcc_scores[experiment] += score
+                experiment_mcc_counts[experiment] += 1
 
-            # Map ranks to experiment names
-            for experiment, rank in zip(experiment_names, ranks):
-                if rank is not None:  # Skip None values
-                    if experiment not in label_scores:
-                        label_scores[experiment] = 0
-                    label_scores[experiment] += rank
+    # Calculate averages
+    experiment_r2_averages = {
+        experiment: experiment_r2_scores[experiment] / experiment_r2_counts[experiment]
+        for experiment in experiment_r2_scores if experiment_r2_counts[experiment] > 0
+    }
+    experiment_mcc_averages = {
+        experiment: experiment_mcc_scores[experiment] / experiment_mcc_counts[experiment]
+        for experiment in experiment_mcc_scores if experiment_mcc_counts[experiment] > 0
+    }
 
+    # Combine results into a DataFrame
+    sorted_results = pd.DataFrame({
+        'Experiment': experiment_ranks.keys(),
+        'Total Rank Score': experiment_ranks.values(),
+        'Average R2-Pearson Score': [experiment_r2_averages.get(exp, None) for exp in experiment_ranks.keys()],
+        'Average MCC Score': [experiment_mcc_averages.get(exp, None) for exp in experiment_ranks.keys()],
+    })
 
-
-    # Convert the results to a DataFrame
-    sorted_results = pd.DataFrame(
-        list(label_scores.items()), columns=['Experiment', 'Total Rank Score']
-    )
-
-    # Sort by the lowest total rank score (higher rank)
+    # Sort by the lowest total rank score
     sorted_results = sorted_results.sort_values(by='Total Rank Score')
-
-    sorted_results = sorted_results[~sorted_results.isin(['nan']).any(axis=1)]
 
     # Save the sorted results to the output file
     sorted_results.to_csv(output_file, index=False)
 
 # Specify input folder and output file
-input_folder = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results_fastesm650'
-output_file = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\pooling_exp_results_fastesm650\FastESM650_Total_Rank_Scores.csv'
+input_folder = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\sum_product'
+output_file = r'C:\Users\cnhor\Documents\GitHub\pooling_exp\results\sum_product\ESM2-650M_Total_Rank_Scores.csv'
 
 process_csv_files(input_folder, output_file)
