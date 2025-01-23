@@ -8,11 +8,12 @@ def process_csv_files(input_folder, output_file):
     experiment_mcc_scores = {}
     experiment_r2_counts = {}
     experiment_mcc_counts = {}
+    experiment_names = []
 
     # Iterate over all CSV files in the input folder
     print(os.listdir(input_folder))
     for filename in os.listdir(input_folder):
-        if filename.endswith('regr.csv'):
+        if filename.endswith(('regr.csv', 'class.csv')):
             file_path = os.path.join(input_folder, filename)
 
             # Read the CSV file
@@ -28,19 +29,52 @@ def process_csv_files(input_folder, output_file):
                 f"{col1}_{col2}" if pd.notna(col2) else f"{col1}"
                 for col1, col2 in zip(df.iloc[0], df.iloc[1])
             ]
-            # Clean up experiment names
             experiment_names = [
                 name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
                 for name in experiment_names
             ]
 
-            scores = df.iloc[4].tolist()  # Fifth row (scores)
+            # Initialize all experiments in dictionaries (if not already initialized)
+            for experiment in experiment_names:
+                if experiment not in experiment_ranks:
+                    experiment_ranks[experiment] = 0
+                if experiment not in experiment_r2_scores:
+                    experiment_r2_scores[experiment] = 0.0
+                    experiment_r2_counts[experiment] = 0
+                if experiment not in experiment_mcc_scores:
+                    experiment_mcc_scores[experiment] = 0.0
+                    experiment_mcc_counts[experiment] = 0
+
+        if filename.endswith('regr.csv'):
+            file_path = os.path.join(input_folder, filename)
+            print(filename)
+            # Read the CSV file
+            df = pd.read_csv(file_path, header=None)
+
+            # Ensure there are at least two rows for headers
+            if df.shape[0] < 2:
+                print(f"Skipping {filename}: Not enough rows for headers.")
+                continue
+
+            if experiment_names != True:
+                # Combine the first two rows to create experiment names
+                experiment_names = [
+                    f"{col1}_{col2}" if pd.notna(col2) else f"{col1}"
+                    for col1, col2 in zip(df.iloc[0], df.iloc[1])
+                ]
+                # Clean up experiment names
+                experiment_names = [
+                    name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
+                    for name in experiment_names
+                ]
+
+            rscores = df.iloc[4].tolist()  # Fifth row (scores)
 
             # Rank the scores
-            ranks = pd.Series(scores).rank(ascending=False, method='min').tolist()
+            ranks = pd.Series(rscores).rank(ascending=False, method='min').tolist()
 
             # Update cumulative ranks, R2-Pearson scores, and counts
-            for experiment, rank, score in zip(experiment_names, ranks, scores):
+            for experiment, rank, score in zip(experiment_names, ranks, rscores):
                 try:
                     score = float(score)
                 except (ValueError, TypeError):
@@ -56,7 +90,7 @@ def process_csv_files(input_folder, output_file):
 
         if filename.endswith('class.csv'):
             file_path = os.path.join(input_folder, filename)
-
+            print(filename)
             # Read the CSV file
             df = pd.read_csv(file_path, header=None)
 
@@ -65,16 +99,17 @@ def process_csv_files(input_folder, output_file):
                 print(f"Skipping {filename}: Not enough rows for headers.")
                 continue
 
-            # Combine the first two rows to create experiment names
-            experiment_names = [
-                f"{row1}_{row2}" if pd.notna(row2) else f"{row1}"
-                for row1, row2 in zip(df.iloc[0], df.iloc[1])
-            ]
-            # Clean up experiment names
-            experiment_names = [
-                name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
-                for name in experiment_names
-            ]
+            if experiment_names != True:
+                # Combine the first two rows to create experiment names
+                experiment_names = [
+                    f"{row1}_{row2}" if pd.notna(row2) else f"{row1}"
+                    for row1, row2 in zip(df.iloc[0], df.iloc[1])
+                ]
+                # Clean up experiment names
+                experiment_names = [
+                    name.replace("(", "").replace(")", "").replace("_None", "").replace("'", "").replace(",", "_").rstrip("_").replace(" ", "")
+                    for name in experiment_names
+                ]
 
             scores = df.iloc[2].tolist()  # Second row (scores)
 
@@ -96,13 +131,14 @@ def process_csv_files(input_folder, output_file):
                 experiment_mcc_scores[experiment] += score
                 experiment_mcc_counts[experiment] += 1
 
-    # Calculate averages
     experiment_r2_averages = {
-        experiment: experiment_r2_scores[experiment] / experiment_r2_counts[experiment]
+        experiment: (experiment_r2_scores[experiment] / experiment_r2_counts[experiment])
+        if experiment_r2_counts[experiment] > 0 else None
         for experiment in experiment_r2_scores
     }
     experiment_mcc_averages = {
-        experiment: experiment_mcc_scores[experiment] / experiment_mcc_counts[experiment]
+        experiment: (experiment_mcc_scores[experiment] / experiment_mcc_counts[experiment])
+        if experiment_mcc_counts[experiment] > 0 else None
         for experiment in experiment_mcc_scores
     }
 
