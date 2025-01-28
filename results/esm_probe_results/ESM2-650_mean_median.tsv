@@ -1,0 +1,5 @@
+dataset	ESM2-650
+DL10_reg	"{""eval_loss"": 0.6412080526351929, ""eval_f1"": 0.63208, ""eval_precision"": 0.66996, ""eval_recall"": 0.63167, ""eval_accuracy"": 0.79745, ""eval_mcc"": 0.75546, ""eval_auc"": 0.96813, ""epoch"": 13.0}"
+DL2_reg	"{""eval_loss"": 0.247152179479599, ""eval_f1"": 0.9149, ""eval_precision"": 0.92199, ""eval_recall"": 0.91042, ""eval_accuracy"": 0.91787, ""eval_mcc"": 0.83233, ""eval_auc"": 0.91042, ""epoch"": 18.0}"
+EC_reg	"{""eval_loss"": 0.0046057975850999355, ""eval_accuracy"": 0.99783, ""eval_f1"": 0.76091, ""eval_precision"": 0.81288, ""eval_recall"": 0.71518, ""eval_hamming_loss"": 0.00217, ""eval_threshold"": 0.04, ""eval_mcc"": 0.62661, ""eval_auc"": 0.99062, ""epoch"": 20.0}"
+enzyme_kcat	"{""eval_loss"": 15.408344268798828, ""eval_r_squared"": 0.43707, ""eval_spearman_rho"": 0.63986, ""eval_spear_pval"": 0.0, ""eval_pearson_rho"": 0.66803, ""eval_pear_pval"": 0.0, ""eval_mse"": 15.40834, ""eval_mae"": 2.88308, ""eval_rmse"": 3.92535, ""epoch"": 50.0}"
